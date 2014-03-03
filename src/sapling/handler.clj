@@ -3,31 +3,16 @@
             [compojure.handler :as handler]
             [compojure.route :as route]
             [ring.util.response :refer [response redirect content-type]]
-            [sandbar.stateful-session :as ss])
+            [sandbar.stateful-session :as ss]
+            [sapling.twitter-oauth :as oauth])
   (:import  [twitter4j Twitter TwitterFactory]
             [twitter4j.conf PropertyConfiguration]))
 
 
-(def twitter-config
-  (PropertyConfiguration. (clojure.java.io/input-stream "/Users/jcowie/Dropbox/nuotltester.properties")))
-
-(defn login []
-  (let [twitter (. (TwitterFactory. twitter-config) (getInstance))
-        callback-url "http://localhost:7777/callback"
-        request-token (. twitter (getOAuthRequestToken callback-url))]
-    (ss/session-put! :twitter twitter)
-    (ss/session-put! :request-token request-token)
-    (redirect (. request-token (getAuthenticationURL)))))
-
-(defn callback [params]
-  (let [
-        twitter (ss/session-get :twitter)
-        request-token (ss/session-get :request-token)
-        verifier (:oauth_verifier params)]
-    (. twitter (getOAuthAccessToken request-token verifier))
-    (let [user (. twitter (showUser (. twitter (getId))))]
-      (ss/session-put! :user {:handle (. user (getScreenName)) :name (. user (getName)) :id (. user (getId))})
-      (redirect "/"))))
+;; TODO
+;; - separate sandbar session stuff from twitter oauth stuff
+;; - pass in callback-url
+;; - bundle up oauth routes into a macro
 
 (defn auth [response-function]
     (if (nil? (ss/session-get :user))
@@ -37,10 +22,7 @@
 (defn home []
   (format "Hello %s" ((ss/session-get :user) :name)))
 
-(defroutes oauth-routes
-  (GET "/login" [] (login))
-  (GET "/callback" {params :params} (callback params))
-  )
+(oauth/defoauthroutes oauth-routes "/login" "/callback" ss/session-put!)
 
 (defroutes app-routes
   oauth-routes
