@@ -22,7 +22,7 @@
 (defn home []
   (format "Hello %s" ((ss/session-get :user) :name)))
 
-(oauth/defoauthroutes oauth-routes "/login" "/callback" ss/session-put!)
+(oauth/defoauthroutes oauth-routes "/login" "/callback" ss/session-put! ss/session-get)
 
 (defroutes app-routes
   oauth-routes

@@ -15,23 +15,22 @@
 
 (defn login [add-to-session callback-url]
   (let [twitter (. (TwitterFactory. twitter-config) (getInstance))
-        callback-url (str "http://localhost:7777" callback-url)
-        request-token (. twitter (getOAuthRequestToken callback-url))]
+        request-token (. twitter (getOAuthRequestToken (str "http://localhost:7777" callback-url)))]
     (add-to-session :twitter twitter)
     (add-to-session :request-token request-token)
     (redirect (. request-token (getAuthenticationURL)))))
 
-(defn callback [params add-to-session]
+(defn callback [params add-to-session get-from-session]
   (let [
-        twitter (ss/session-get :twitter)
-        request-token (ss/session-get :request-token)
+        twitter (get-from-session :twitter)
+        request-token (get-from-session :request-token)
         verifier (:oauth_verifier params)]
     (. twitter (getOAuthAccessToken request-token verifier))
     (let [user (. twitter (showUser (. twitter (getId))))]
       (add-to-session :user {:handle (. user (getScreenName)) :name (. user (getName)) :id (. user (getId))})
       (redirect "/"))))
 
-(defmacro defoauthroutes [n login-url callback-url add-to-session]
+(defmacro defoauthroutes [n login-url callback-url add-to-session get-from-session]
   `(defroutes ~n
     (GET ~login-url [] (login ~add-to-session ~callback-url))
-    (GET ~callback-url {params# :params} (callback params# ~add-to-session))))
+    (GET ~callback-url {params# :params} (callback params# ~add-to-session ~get-from-session))))
